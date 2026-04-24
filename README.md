@@ -1,6 +1,6 @@
 # git-commit-msg
 
-A CLI tool that reads your staged git diff and generates a conventional commit message using a local LLM (Ollama). No API key, no cost, works offline. Once installed, works globally across all your repos.
+A CLI tool that reads your staged git diff and generates a conventional commit message header using a local LLM (Ollama). No API key, no cost, works offline. Once installed, works globally across all your repos.
 
 ---
 
@@ -104,6 +104,16 @@ Override defaults with environment variables:
 | `OLLAMA_MODEL` | `llama3`                 | Default model to use  |
 
 The `--model` flag takes precedence over `OLLAMA_MODEL` if both are set.
+
+### Large diffs
+
+If your staged diff is very large, it gets automatically truncated to ~1500 tokens before being sent to the model. This keeps every run safely within llama3's 8k context window. You'll see a warning in the terminal if truncation happens:
+
+```
+Warning: diff is large (XXXX chars), truncating to 6000 chars to stay within model context limit.
+```
+
+The tool always cuts at a complete line so the diff sent to the model is clean.
 
 ---
 
