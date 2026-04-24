@@ -4,9 +4,11 @@ import os
 import json
 import urllib.request
 import urllib.error
+import argparse
 
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3")
+DEFAULT_MODEL = os.environ.get("OLLAMA_MODEL", "llama3")
+MAX_DIFF_CHARS = 8000  # truncate large diffs before sending to Ollama
 
 SYSTEM_PROMPT = """You are an expert at writing Git conventional commit messages.
 
@@ -41,6 +43,16 @@ def get_staged_diff() -> str:
     return result.stdout or ""
 
 
+def truncate_diff(diff: str) -> str:
+    if len(diff) <= MAX_DIFF_CHARS:
+        return diff
+    print(
+        f"Warning: diff is large ({len(diff)} chars), truncating to {MAX_DIFF_CHARS} chars.\n",
+        file=sys.stderr,
+    )
+    return diff[:MAX_DIFF_CHARS] + "\n\n[... diff truncated ...]"
+
+
 def check_ollama_running() -> bool:
     try:
         urllib.request.urlopen(f"{OLLAMA_URL}/api/tags", timeout=3)
@@ -49,18 +61,18 @@ def check_ollama_running() -> bool:
         return False
 
 
-def generate_commit_message(diff: str) -> str:
+def generate_commit_message(diff: str, model: str) -> str:
     if not check_ollama_running():
         print(
             "Error: Ollama is not running.\n"
             "Start it with:  ollama serve\n"
-            f"Then pull a model: ollama pull {OLLAMA_MODEL}",
+            f"Then pull a model: ollama pull {model}",
             file=sys.stderr,
         )
         sys.exit(1)
 
     payload = json.dumps({
-        "model": OLLAMA_MODEL,
+        "model": model,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
             {
@@ -88,16 +100,64 @@ def generate_commit_message(diff: str) -> str:
         sys.exit(1)
 
 
+def copy_to_clipboard(text: str) -> bool:
+    try:
+        subprocess.run(
+            ["clip"],
+            input=text.encode("utf-16-le"),
+            check=True,
+            shell=True,
+        )
+        return True
+    except Exception:
+        pass
+    # fallback for macOS/Linux
+    for cmd in [["pbcopy"], ["xclip", "-selection", "clipboard"], ["xsel", "--clipboard", "--input"]]:
+        try:
+            subprocess.run(cmd, input=text.encode(), check=True)
+            return True
+        except Exception:
+            continue
+    return False
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Generate a conventional commit message from staged git changes using a local LLM."
+    )
+    parser.add_argument(
+        "--model", "-m",
+        default=DEFAULT_MODEL,
+        help=f"Ollama model to use (default: {DEFAULT_MODEL})",
+    )
+    parser.add_argument(
+        "--copy", "-c",
+        action="store_true",
+        help="Copy the generated message to clipboard",
+    )
+    return parser.parse_args()
+
+
 def main():
+    args = parse_args()
+
     diff = get_staged_diff()
 
     if not diff.strip():
         print("No staged changes found. Stage your changes with `git add` first.")
         sys.exit(0)
 
-    print(f"Analyzing staged diff with {OLLAMA_MODEL}...\n", file=sys.stderr)
-    message = generate_commit_message(diff)
+    diff = truncate_diff(diff)
+
+    print(f"Analyzing staged diff with {args.model}...\n", file=sys.stderr)
+    message = generate_commit_message(diff, args.model)
     print(message)
+
+    if args.copy:
+        if copy_to_clipboard(message):
+            print("\nCopied to clipboard.", file=sys.stderr)
+        else:
+            print("\nCould not copy to clipboard.", file=sys.stderr)
 
 
 if __name__ == "__main__":

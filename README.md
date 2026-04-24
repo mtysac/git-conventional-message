@@ -64,6 +64,26 @@ Or pipe directly into a commit:
 git commit -m "$(git-msg)"
 ```
 
+**Flags:**
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--model` | `-m` | Ollama model to use (default: `llama3`) |
+| `--copy` | `-c` | Copy the generated message to clipboard |
+
+Examples:
+
+```bash
+# use a different model
+git-msg --model mistral
+
+# copy result straight to clipboard
+git-msg --copy
+
+# both
+git-msg --model mistral --copy
+```
+
 If Ollama is not running you'll see a helpful error:
 
 ```
@@ -81,13 +101,9 @@ Override defaults with environment variables:
 | Variable       | Default                  | Description           |
 |----------------|--------------------------|-----------------------|
 | `OLLAMA_URL`   | `http://localhost:11434` | Ollama server address |
-| `OLLAMA_MODEL` | `llama3`                 | Model to use          |
+| `OLLAMA_MODEL` | `llama3`                 | Default model to use  |
 
-Example — use a different model:
-
-```bash
-OLLAMA_MODEL=mistral git-msg
-```
+The `--model` flag takes precedence over `OLLAMA_MODEL` if both are set.
 
 ---
 
