@@ -1,6 +1,25 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from main import truncate_diff, check_ollama_running, get_staged_diff, copy_to_clipboard, MAX_DIFF_CHARS
+from main import truncate_diff, check_ollama_running, get_staged_diff, copy_to_clipboard, extract_commit_header, MAX_DIFF_CHARS
+
+
+# --- extract_commit_header ---
+
+def test_extract_commit_header_clean_input():
+    assert extract_commit_header("feat(auth): add login endpoint") == "feat(auth): add login endpoint"
+
+def test_extract_commit_header_strips_preamble():
+    text = "Here is the conventional commit message header:\ndocs(README): update readme"
+    assert extract_commit_header(text) == "docs(README): update readme"
+
+def test_extract_commit_header_strips_extra_lines():
+    text = "Sure! Here you go:\nfix(api): handle null response\n\nLet me know if you need changes."
+    assert extract_commit_header(text) == "fix(api): handle null response"
+
+def test_extract_commit_header_fallback_to_first_nonempty_line():
+    # No conventional type found, should return first non-empty line
+    text = "\n\nsome unexpected output"
+    assert extract_commit_header(text) == "some unexpected output"
 
 
 # --- truncate_diff ---

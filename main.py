@@ -25,6 +25,30 @@ Rules:
 """
 
 
+CONVENTIONAL_TYPES = (
+    "feat", "fix", "docs", "style", "refactor",
+    "perf", "test", "chore", "ci", "build", "revert",
+)
+
+
+def extract_commit_header(text: str) -> str:
+    """Extract just the conventional commit header line from model output.
+
+    Models sometimes prefix the answer with phrases like
+    'Here is the commit message:'. This finds the first line that
+    looks like a real conventional commit header and returns it.
+    """
+    for line in text.splitlines():
+        line = line.strip()
+        if any(line.startswith(t) for t in CONVENTIONAL_TYPES):
+            return line
+    # Fallback: return the first non-empty line
+    for line in text.splitlines():
+        if line.strip():
+            return line.strip()
+    return text.strip()
+
+
 def get_staged_diff() -> str:
     """Run git diff --cached and return the output as a string."""
     result = subprocess.run(
@@ -100,7 +124,7 @@ def generate_commit_message(diff: str, model: str) -> str:
     try:
         with urllib.request.urlopen(req, timeout=120) as resp:
             body: dict = json.loads(resp.read().decode())
-            return body["message"]["content"].strip()
+            return extract_commit_header(body["message"]["content"])
     except urllib.error.URLError as e:
         print(f"Error communicating with Ollama: {e}", file=sys.stderr)
         sys.exit(1)
