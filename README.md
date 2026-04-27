@@ -71,19 +71,28 @@ git commit -m "$(git-msg)"
 | Flag | Short | Description |
 |------|-------|-------------|
 | `--model` | `-m` | Ollama model to use (default: `llama3`) |
+| `--scope` | `-s` | Include a scope in the message e.g. `feat(auth): description` |
 | `--copy` | `-c` | Copy the generated message to clipboard |
 
 Examples:
 
 ```bash
+# default — no scope
+git-msg
+# feat: add login endpoint
+
+# with scope
+git-msg --scope
+# feat(auth): add login endpoint
+
 # use a different model
 git-msg --model mistral
 
-# copy result straight to clipboard
-git-msg --copy
+# scope + copy to clipboard
+git-msg --scope --copy
 
-# both
-git-msg --model mistral --copy
+# all flags
+git-msg --model mistral --scope --copy
 ```
 
 If Ollama is not running you'll see a helpful error:
