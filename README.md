@@ -41,7 +41,7 @@ You can verify Ollama is running by visiting http://localhost:11434 in your brow
 This makes `git-msg` available in every repo on your machine. Run this once from anywhere — replace the path with wherever this project lives on your machine:
 
 ```bash
-pip install --editable "C:\path\to\016_git_conv_m\git_commit_msg"
+pip install --editable "C:\path\to\git-conventional-message"
 ```
 
 > **Note:** Use `pyproject.toml`-based install (already configured). If you get a `BackendUnavailable` error, make sure setuptools is up to date:
