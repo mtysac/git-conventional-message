@@ -12,14 +12,26 @@ DEFAULT_MODEL: str = os.environ.get("OLLAMA_MODEL", "llama3")
 MAX_DIFF_CHARS: int = 6000  # ~1500 tokens, leaves plenty of room in llama3's 8k context window
 # Budget breakdown: ~120 tokens system prompt + ~1500 tokens diff + ~80 tokens output = ~1700 total
 
-SYSTEM_PROMPT: str = """You are an expert at writing Git conventional commit messages.
+SYSTEM_PROMPT_NO_SCOPE: str = """You are an expert at writing Git conventional commit messages.
+
+Given a git diff, generate a single conventional commit message header in this format:
+  <type>: <short description>
+
+Rules:
+- type must be one of: feat, fix, docs, style, refactor, perf, test, chore, ci, build, revert
+- do NOT include a scope
+- short description: imperative mood, lowercase, no period, max 72 chars
+- Output ONLY the single header line, nothing else
+"""
+
+SYSTEM_PROMPT_WITH_SCOPE: str = """You are an expert at writing Git conventional commit messages.
 
 Given a git diff, generate a single conventional commit message header in this format:
   <type>(<scope>): <short description>
 
 Rules:
 - type must be one of: feat, fix, docs, style, refactor, perf, test, chore, ci, build, revert
-- scope is optional but recommended (e.g. the module or file affected)
+- scope should reflect the module, file, or area affected (e.g. auth, api, README)
 - short description: imperative mood, lowercase, no period, max 72 chars
 - Output ONLY the single header line, nothing else
 """
@@ -90,7 +102,7 @@ def check_ollama_running() -> bool:
         return False
 
 
-def generate_commit_message(diff: str, model: str) -> str:
+def generate_commit_message(diff: str, model: str, use_scope: bool = False) -> str:
     """Send the diff to Ollama and return a conventional commit message header."""
     if not check_ollama_running():
         print(
@@ -101,10 +113,12 @@ def generate_commit_message(diff: str, model: str) -> str:
         )
         sys.exit(1)
 
+    system_prompt: str = SYSTEM_PROMPT_WITH_SCOPE if use_scope else SYSTEM_PROMPT_NO_SCOPE
+
     payload: bytes = json.dumps({
         "model": model,
         "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {
                 "role": "user",
                 "content": f"Generate a conventional commit message for this diff:\n\n{diff}",
@@ -163,6 +177,11 @@ def parse_args() -> Namespace:
         help=f"Ollama model to use (default: {DEFAULT_MODEL})",
     )
     parser.add_argument(
+        "--scope", "-s",
+        action="store_true",
+        help="Include a scope in the commit message e.g. feat(scope): description",
+    )
+    parser.add_argument(
         "--copy", "-c",
         action="store_true",
         help="Copy the generated message to clipboard",
@@ -182,7 +201,7 @@ def main() -> None:
     diff = truncate_diff(diff)
 
     print(f"Analyzing staged diff with {args.model}...\n", file=sys.stderr)
-    message: str = generate_commit_message(diff, args.model)
+    message: str = generate_commit_message(diff, args.model, use_scope=args.scope)
     print(message)
 
     if args.copy:
