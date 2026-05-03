@@ -22,6 +22,9 @@ build/
 .coverage
 htmlcov/
 
+# Ruff cache
+.ruff_cache/
+
 # OS
 .DS_Store
 Thumbs.db
@@ -30,3 +33,5 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Config (user's personal config should not be committed)
+.git-msg.toml

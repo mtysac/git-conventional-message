@@ -2,30 +2,27 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from main import (
-    MAX_DIFF_CHARS,
-    check_ollama_running,
-    copy_to_clipboard,
-    extract_commit_header,
-    get_staged_diff,
-    truncate_diff,
-)
+from git_msg.cli import copy_to_clipboard
+from git_msg.git import MAX_DIFF_CHARS, get_staged_diff, truncate_diff
+from git_msg.llm import check_ollama_running, extract_commit_header
 
 # --- extract_commit_header ---
 
 def test_extract_commit_header_clean_input():
     assert extract_commit_header("feat(auth): add login endpoint") == "feat(auth): add login endpoint"
 
+
 def test_extract_commit_header_strips_preamble():
     text = "Here is the conventional commit message header:\ndocs(README): update readme"
     assert extract_commit_header(text) == "docs(README): update readme"
+
 
 def test_extract_commit_header_strips_extra_lines():
     text = "Sure! Here you go:\nfix(api): handle null response\n\nLet me know if you need changes."
     assert extract_commit_header(text) == "fix(api): handle null response"
 
+
 def test_extract_commit_header_fallback_to_first_nonempty_line():
-    # No conventional type found, should return first non-empty line
     text = "\n\nsome unexpected output"
     assert extract_commit_header(text) == "some unexpected output"
 
@@ -40,21 +37,18 @@ def test_truncate_diff_short_diff_unchanged():
 def test_truncate_diff_large_diff_is_truncated():
     diff = "a" * (MAX_DIFF_CHARS + 1000)
     result = truncate_diff(diff)
-    assert len(result) <= MAX_DIFF_CHARS + 100  # allows for the appended notice
+    assert len(result) <= MAX_DIFF_CHARS + 100
     assert "[... diff truncated" in result
 
 
 def test_truncate_diff_cuts_at_newline():
-    # Build a diff that exceeds the limit, with newlines throughout
     line = "x" * 100 + "\n"
     diff = line * (MAX_DIFF_CHARS // len(line) + 5)
     result = truncate_diff(diff)
     notice = "\n\n[... diff truncated to fit model context limit ...]"
-    # Result must contain the truncation notice
     assert notice in result
-    # The body before the notice must not contain a broken (non-newline-terminated) mid-line cut
     body = result[: result.index(notice)]
-    assert "\n" in body  # body has complete lines
+    assert "\n" in body
 
 
 def test_truncate_diff_exactly_at_limit_unchanged():
@@ -68,12 +62,12 @@ def test_check_ollama_running_returns_true_when_reachable():
     with patch("urllib.request.urlopen") as mock_open:
         mock_open.return_value.__enter__ = lambda s: s
         mock_open.return_value.__exit__ = MagicMock(return_value=False)
-        assert check_ollama_running() is True
+        assert check_ollama_running("http://localhost:11434") is True
 
 
 def test_check_ollama_running_returns_false_when_unreachable():
     with patch("urllib.request.urlopen", side_effect=Exception("connection refused")):
-        assert check_ollama_running() is False
+        assert check_ollama_running("http://localhost:11434") is False
 
 
 # --- get_staged_diff ---
